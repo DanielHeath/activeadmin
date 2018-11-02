@@ -128,7 +128,18 @@ module ActiveAdmin
           # remove deeply nested associations
           not_poly.reject!{ |r| r.chain.length > 2 }
 
-          filters = poly.map(&:foreign_type) + not_poly.map(&:name)
+          # Check high-arity associations for filterable columns
+          high_arity, low_arity = not_poly.partition{ |r| r.klass.count > namespace.maximum_association_filter_arity }
+
+          search_columns = namespace.filter_columns_for_large_association.map(&:to_s)
+
+          # Remove high-arity associations with no searchable column
+          high_arity.reject! {|r| ! r.klass.column_names.find {|name| search_columns.include?(name)}}
+
+          high_arity = high_arity.map {|r| r.name.to_s + "_" + r.klass.column_names.find {|name| search_columns.include?(name)}.to_s + namespace.filter_method_for_large_association}
+
+          filters = poly.map(&:foreign_type) + low_arity.map(&:name) + high_arity
+
           filters.map &:to_sym
         else
           []
