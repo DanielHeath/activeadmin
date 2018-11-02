@@ -249,3 +249,36 @@ Feature: Index Filtering
     """
     And I press "Filter"
     Then I should not see a sidebar titled "Search status:"
+
+  Scenario: Too many categories to show
+    Given a category named "Astrology" exists
+    Given a category named "Astronomy" exists
+    Given a category named "Navigation" exists
+    Given a post with the title "Star Signs" in category "Astrology" exists
+    Given a post with the title "Constellations" in category "Astronomy" exists
+    Given a post with the title "Compass and Sextant" in category "Navigation" exists
+    And an index configuration of:
+    """
+      ActiveAdmin.register Category
+      ActiveAdmin.register Post do
+        config.namespace.maximum_association_filter_arity = 3
+      end
+    """
+    And I am on the index page for posts
+    Then I should see "CATEGORY" within "#filters_sidebar_section"
+     And I should not see "CATEGORY NAME STARTS WITH" within "#filters_sidebar_section"
+    Given an index configuration of:
+    """
+      ActiveAdmin.register Category
+      ActiveAdmin.register Post do
+        config.namespace.maximum_association_filter_arity = 2
+        config.namespace.filter_method_for_large_association = '_contains'
+      end
+    """
+    And I am on the index page for posts
+    Then I should see "CATEGORY NAME CONTAINS" within "#filters_sidebar_section"
+    When I fill in "Category name contains" with "Astro"
+    And I press "Filter"
+    Then I should see "Star Signs"
+     And I should see "Constellations"
+     And I should not see "Compass and Sextant"
